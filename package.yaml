@@ -1,0 +1,41 @@
+library:
+  source-dirs: src
+tests:
+  slurm-proposals-test:
+    source-dirs: test
+    main: Spec.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - slurm-proposals
+copyright: 2019 Author name here
+maintainer: example@example.com
+dependencies:
+- text
+- base >= 4.7 && < 5
+- beam-core
+- beam-sqlite
+- beam-migrate
+- sqlite-simple
+- time
+name: slurm-proposals
+version: 0.1.0.0
+extra-source-files:
+- README.md
+- ChangeLog.md
+author: Author name here
+github: githubuser/slurm-proposals
+license: BSD3
+executables:
+  slurm-proposals-exe:
+    source-dirs: app
+    main: Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - slurm-proposals
+description: Please see the README on GitHub at <https://github.com/githubuser/slurm-proposals#readme>
