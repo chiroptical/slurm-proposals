@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -15,8 +18,12 @@ import Database.Beam.Migrate
 import Database.Beam.Migrate.Simple
 import Database.Beam.Sqlite
 import Database.Beam.Sqlite.Migrate
+import Database.Beam.Sqlite.Syntax
+import Database.Beam.Backend.SQL
 import Database.SQLite.Simple (Connection)
 
+import Data.Time.Clock
+import Data.Time.Calendar
 import Data.Time.LocalTime
 
 data NotificationPercent =
@@ -27,11 +34,48 @@ data NotificationPercent =
   | Hundred
   deriving (Eq, Ord, Show)
 
+newtype Account =
+  Account
+    { _account :: Text
+    } deriving (Show, Eq)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be Account where
+  defaultSqlDataType = defaultSqlDataType . fmap _account
+
+instance HasSqlValueSyntax be Text => HasSqlValueSyntax be Account where
+  sqlValueSyntax = sqlValueSyntax . _account
+
+instance FromBackendRow Sqlite Account where
+  fromBackendRow = Account <$> fromBackendRow
+
+accountDataType :: DataType Sqlite Account
+accountDataType = DataType sqliteTextType
+
+newtype ServiceUnits =
+  ServiceUnits
+    { _serviceUnits :: Integer
+    } deriving (Show, Eq)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be Integer where
+  defaultSqlDataType _ _ _ = intType
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be ServiceUnits where
+  defaultSqlDataType = defaultSqlDataType . fmap _serviceUnits
+
+instance HasSqlValueSyntax be Integer => HasSqlValueSyntax be ServiceUnits where
+  sqlValueSyntax = sqlValueSyntax . _serviceUnits
+
+instance FromBackendRow Sqlite ServiceUnits where
+  fromBackendRow = ServiceUnits <$> fromBackendRow
+
+serviceUnitsDataType :: DataType Sqlite ServiceUnits
+serviceUnitsDataType = DataType sqliteBigIntType
+
 data ProposalT f =
   Proposal
     { _proposalId :: Columnar f Integer
-    , _proposalAccount :: Columnar f Text
-    , _proposalServiceUnits :: Columnar f Integer
+    , _proposalAccount :: Columnar f Account
+    , _proposalServiceUnits :: Columnar f ServiceUnits
     , _proposalEndDate :: Columnar f LocalTime
     , _proposalNotificationProgress :: Columnar f Text
     , _proposalLocked :: Columnar f Bool
@@ -67,8 +111,8 @@ initialSetup = ProposalDb <$>
   (createTable "proposals" $
     Proposal
       { _proposalId = field "id" int notNull unique
-      , _proposalAccount = field "account" (varchar Nothing) notNull
-      , _proposalServiceUnits = field "serviceUnits" int notNull
+      , _proposalAccount = field "account" accountDataType
+      , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType
       , _proposalEndDate = field "endDate" timestamptz notNull
       , _proposalNotificationProgress = field "notificationProgress" (varchar Nothing) notNull
       , _proposalLocked = field "locked" boolean notNull
