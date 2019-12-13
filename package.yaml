@@ -11,6 +11,8 @@ tests:
     dependencies:
     - slurm-proposals
     - hspec
+    - directory
+    - transformers
 copyright: 2019 Barry Moore II
 maintainer: moore0557@gmail.com
 dependencies:
