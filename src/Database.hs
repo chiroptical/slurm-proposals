@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -15,8 +18,12 @@ import Database.Beam.Migrate
 import Database.Beam.Migrate.Simple
 import Database.Beam.Sqlite
 import Database.Beam.Sqlite.Migrate
+import Database.Beam.Sqlite.Syntax
+import Database.Beam.Backend.SQL
 import Database.SQLite.Simple (Connection)
 
+import Data.Time.Clock
+import Data.Time.Calendar
 import Data.Time.LocalTime
 
 data NotificationPercent =
@@ -27,10 +34,26 @@ data NotificationPercent =
   | Hundred
   deriving (Eq, Ord, Show)
 
+newtype Account =
+  Account
+    { _account :: Text
+    } deriving (Show, Eq)
+
+instance HasSqlValueSyntax be Text => HasSqlValueSyntax be Account where
+  sqlValueSyntax = sqlValueSyntax . _account
+
+instance FromBackendRow Sqlite Account where
+  fromBackendRow = Account <$> fromBackendRow
+
+newtype ServiceUnits =
+  ServiceUnits
+    { _serviceUnits :: Integer
+    } deriving (Show, Eq)
+
 data ProposalT f =
   Proposal
     { _proposalId :: Columnar f Integer
-    , _proposalAccount :: Columnar f Text
+    , _proposalAccount :: Columnar f Account
     , _proposalServiceUnits :: Columnar f Integer
     , _proposalEndDate :: Columnar f LocalTime
     , _proposalNotificationProgress :: Columnar f Text
