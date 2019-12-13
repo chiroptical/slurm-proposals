@@ -1,3 +1,4 @@
 .stack-work/
 slurm-proposals.cabal
 *~
+test.db
