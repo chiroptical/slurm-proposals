@@ -79,7 +79,7 @@ instance FromBackendRow Sqlite ServiceUnits where
   fromBackendRow = ServiceUnits <$> fromBackendRow
 
 serviceUnitsDataType :: DataType Sqlite ServiceUnits
-serviceUnitsDataType = DataType sqliteBigIntType
+serviceUnitsDataType = DataType intType
 
 data ProposalT f =
   Proposal
@@ -89,7 +89,7 @@ data ProposalT f =
     , _proposalEndDate :: Columnar f LocalTime
     , _proposalNotificationPercent :: Columnar f NotificationPercent
     , _proposalLocked :: Columnar f Bool
-    , _proposalCount :: Columnar f Int
+    , _proposalsSubmitted :: Columnar f Int
     , _proposalServiceUnitsUnused :: Columnar f Int
     } deriving Generic
 
@@ -126,7 +126,7 @@ initialSetup = ProposalDb <$>
       , _proposalEndDate = field "endDate" timestamptz notNull
       , _proposalNotificationPercent = field "notificationPercent" notificationPercentDataType notNull
       , _proposalLocked = field "locked" boolean notNull
-      , _proposalCount = field "count" int notNull
+      , _proposalsSubmitted = field "proposalsSubmitted" int notNull
       , _proposalServiceUnitsUnused = field "serviceUnitsUnused" int notNull
       }
   )
