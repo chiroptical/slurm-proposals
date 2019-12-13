@@ -39,6 +39,9 @@ newtype Account =
     { _account :: Text
     } deriving (Show, Eq)
 
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be Account where
+  defaultSqlDataType = defaultSqlDataType . fmap _account
+
 instance HasSqlValueSyntax be Text => HasSqlValueSyntax be Account where
   sqlValueSyntax = sqlValueSyntax . _account
 
