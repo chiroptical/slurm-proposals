@@ -139,7 +139,7 @@ initialSetup = ProposalDb <$>
   (createTable "proposals" $
     Proposal
       { _proposalId = field "id" int notNull unique
-      , _proposalAccount = field "account" accountDataType notNull
+      , _proposalAccount = field "account" accountDataType notNull unique
       , _proposalAccountOwner = field "accountOwner" accountOwnerDataType notNull
       , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType notNull
       , _proposalEndDate = field "endDate" timestamptz notNull
