@@ -87,3 +87,9 @@ migrateDb :: Connection -> IO (Maybe (CheckedDatabaseSettings Sqlite ProposalDb)
 migrateDb conn =
   runBeamSqliteDebug putStrLn conn $
     bringUpToDateWithHooks allowDestructive migrationBackend initialSetupStep
+
+createProposal :: Connection -> Account -> ServiceUnits -> IO ()
+createProposal conn (Account account) (ServiceUnits units) = do
+  currTime <- getCurrentTime
+  let endDate = addGregorianYearsClip 1 (utctDay currTime)
+  undefined
