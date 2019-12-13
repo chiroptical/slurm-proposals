@@ -10,8 +10,9 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - slurm-proposals
-copyright: 2019 Author name here
-maintainer: example@example.com
+    - hspec
+copyright: 2019 Barry Moore II
+maintainer: moore0557@gmail.com
 dependencies:
 - text
 - base >= 4.7 && < 5
@@ -25,9 +26,9 @@ version: 0.1.0.0
 extra-source-files:
 - README.md
 - ChangeLog.md
-author: Author name here
-github: githubuser/slurm-proposals
-license: BSD3
+author: Barry Moore II
+github: barrymoo/slurm-proposals
+license: MIT
 executables:
   slurm-proposals-exe:
     source-dirs: app
@@ -38,4 +39,4 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - slurm-proposals
-description: Please see the README on GitHub at <https://github.com/githubuser/slurm-proposals#readme>
+description: Please see the README on GitHub at <https://github.com/barrymoo/slurm-proposals#readme>
