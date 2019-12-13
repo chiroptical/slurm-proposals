@@ -64,6 +64,23 @@ instance FromBackendRow Sqlite Account where
 accountDataType :: DataType Sqlite Account
 accountDataType = DataType sqliteTextType
 
+newtype AccountOwner =
+  AccountOwner
+    { _accountOwner :: Text
+    } deriving (Show, Eq)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be AccountOwner where
+  defaultSqlDataType = defaultSqlDataType . fmap _accountOwner
+
+instance HasSqlValueSyntax be Text => HasSqlValueSyntax be AccountOwner where
+  sqlValueSyntax = sqlValueSyntax . _accountOwner
+
+instance FromBackendRow Sqlite AccountOwner where
+  fromBackendRow = AccountOwner <$> fromBackendRow
+
+accountOwnerDataType :: DataType Sqlite AccountOwner
+accountOwnerDataType = DataType sqliteTextType
+
 newtype ServiceUnits =
   ServiceUnits
     { _serviceUnits :: Int
@@ -85,6 +102,7 @@ data ProposalT f =
   Proposal
     { _proposalId :: Columnar f Int
     , _proposalAccount :: Columnar f Account
+    , _proposalAccountOwner :: Columnar f AccountOwner
     , _proposalServiceUnits :: Columnar f ServiceUnits
     , _proposalEndDate :: Columnar f LocalTime
     , _proposalNotificationPercent :: Columnar f NotificationPercent
@@ -122,6 +140,7 @@ initialSetup = ProposalDb <$>
     Proposal
       { _proposalId = field "id" int notNull unique
       , _proposalAccount = field "account" accountDataType notNull
+      , _proposalAccountOwner = field "accountOwner" accountOwnerDataType notNull
       , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType notNull
       , _proposalEndDate = field "endDate" timestamptz notNull
       , _proposalNotificationPercent = field "notificationPercent" notificationPercentDataType notNull
@@ -142,8 +161,8 @@ migrateDb conn =
   runBeamSqliteDebug putStrLn conn $
     bringUpToDateWithHooks allowDestructive migrationBackend initialSetupStep
 
-createProposal :: Connection -> Account -> ServiceUnits -> IO ()
-createProposal conn account units = do
+createProposal :: Connection -> Account -> AccountOwner -> ServiceUnits -> IO ()
+createProposal conn account owner units = do
   currTime <- getCurrentTime
   currTimeZone <- getCurrentTimeZone
   let endDate = addGregorianYearsClip 1 (utctDay currTime)
@@ -154,6 +173,7 @@ createProposal conn account units = do
         [ Proposal
           default_
           (val_ account)
+          (val_ owner)
           (val_ units)
           (val_ $ utcToLocalTime currTimeZone currTime { utctDay = endDate })
           (val_ Zero)
