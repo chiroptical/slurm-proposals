@@ -56,11 +56,26 @@ newtype ServiceUnits =
     { _serviceUnits :: Integer
     } deriving (Show, Eq)
 
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be Integer where
+  defaultSqlDataType _ _ _ = intType
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be ServiceUnits where
+  defaultSqlDataType = defaultSqlDataType . fmap _serviceUnits
+
+instance HasSqlValueSyntax be Integer => HasSqlValueSyntax be ServiceUnits where
+  sqlValueSyntax = sqlValueSyntax . _serviceUnits
+
+instance FromBackendRow Sqlite ServiceUnits where
+  fromBackendRow = ServiceUnits <$> fromBackendRow
+
+serviceUnitsDataType :: DataType Sqlite ServiceUnits
+serviceUnitsDataType = DataType sqliteBigIntType
+
 data ProposalT f =
   Proposal
     { _proposalId :: Columnar f Integer
     , _proposalAccount :: Columnar f Account
-    , _proposalServiceUnits :: Columnar f Integer
+    , _proposalServiceUnits :: Columnar f ServiceUnits
     , _proposalEndDate :: Columnar f LocalTime
     , _proposalNotificationProgress :: Columnar f Text
     , _proposalLocked :: Columnar f Bool
@@ -97,7 +112,7 @@ initialSetup = ProposalDb <$>
     Proposal
       { _proposalId = field "id" int notNull unique
       , _proposalAccount = field "account" accountDataType
-      , _proposalServiceUnits = field "serviceUnits" int notNull
+      , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType
       , _proposalEndDate = field "endDate" timestamptz notNull
       , _proposalNotificationProgress = field "notificationProgress" (varchar Nothing) notNull
       , _proposalLocked = field "locked" boolean notNull
