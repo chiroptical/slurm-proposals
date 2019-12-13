@@ -48,6 +48,9 @@ instance HasSqlValueSyntax be Text => HasSqlValueSyntax be Account where
 instance FromBackendRow Sqlite Account where
   fromBackendRow = Account <$> fromBackendRow
 
+accountDataType :: DataType Sqlite Account
+accountDataType = DataType sqliteTextType
+
 newtype ServiceUnits =
   ServiceUnits
     { _serviceUnits :: Integer
@@ -93,7 +96,7 @@ initialSetup = ProposalDb <$>
   (createTable "proposals" $
     Proposal
       { _proposalId = field "id" int notNull unique
-      , _proposalAccount = field "account" (varchar Nothing) notNull
+      , _proposalAccount = field "account" accountDataType
       , _proposalServiceUnits = field "serviceUnits" int notNull
       , _proposalEndDate = field "endDate" timestamptz notNull
       , _proposalNotificationProgress = field "notificationProgress" (varchar Nothing) notNull
