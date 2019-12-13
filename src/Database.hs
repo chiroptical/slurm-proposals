@@ -25,6 +25,7 @@ import Database.SQLite.Simple (Connection)
 import Data.Time.Clock
 import Data.Time.Calendar
 import Data.Time.LocalTime
+import           Control.Monad                  ( void )
 
 data NotificationPercent =
     Zero
@@ -32,7 +33,19 @@ data NotificationPercent =
   | Fifty
   | SeventyFive
   | Hundred
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Read)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be NotificationPercent where
+  defaultSqlDataType = defaultSqlDataType . fmap (T.pack . show)
+
+instance HasSqlValueSyntax be String => HasSqlValueSyntax be NotificationPercent where
+  sqlValueSyntax = autoSqlValueSyntax
+
+instance FromBackendRow Sqlite NotificationPercent where
+  fromBackendRow = read . T.unpack <$> fromBackendRow
+
+notificationPercentDataType :: DataType Sqlite NotificationPercent
+notificationPercentDataType = DataType sqliteTextType
 
 newtype Account =
   Account
@@ -53,16 +66,13 @@ accountDataType = DataType sqliteTextType
 
 newtype ServiceUnits =
   ServiceUnits
-    { _serviceUnits :: Integer
+    { _serviceUnits :: Int
     } deriving (Show, Eq)
-
-instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be Integer where
-  defaultSqlDataType _ _ _ = intType
 
 instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be ServiceUnits where
   defaultSqlDataType = defaultSqlDataType . fmap _serviceUnits
 
-instance HasSqlValueSyntax be Integer => HasSqlValueSyntax be ServiceUnits where
+instance HasSqlValueSyntax be Int => HasSqlValueSyntax be ServiceUnits where
   sqlValueSyntax = sqlValueSyntax . _serviceUnits
 
 instance FromBackendRow Sqlite ServiceUnits where
@@ -73,14 +83,14 @@ serviceUnitsDataType = DataType sqliteBigIntType
 
 data ProposalT f =
   Proposal
-    { _proposalId :: Columnar f Integer
+    { _proposalId :: Columnar f Int
     , _proposalAccount :: Columnar f Account
     , _proposalServiceUnits :: Columnar f ServiceUnits
     , _proposalEndDate :: Columnar f LocalTime
-    , _proposalNotificationProgress :: Columnar f Text
+    , _proposalNotificationPercent :: Columnar f NotificationPercent
     , _proposalLocked :: Columnar f Bool
-    , _proposalCount :: Columnar f Integer
-    , _proposalServiceUnitsUnused :: Columnar f Integer
+    , _proposalCount :: Columnar f Int
+    , _proposalServiceUnitsUnused :: Columnar f Int
     } deriving Generic
 
 type Proposal = ProposalT Identity
@@ -93,7 +103,7 @@ type ProposalId = PrimaryKey ProposalT Identity
 instance Beamable ProposalT
 
 instance Table ProposalT where
-  data PrimaryKey ProposalT f = ProposalId (Columnar f Integer)
+  data PrimaryKey ProposalT f = ProposalId (Columnar f Int)
     deriving (Generic, Beamable)
   primaryKey = ProposalId . _proposalId
 
@@ -114,7 +124,7 @@ initialSetup = ProposalDb <$>
       , _proposalAccount = field "account" accountDataType
       , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType
       , _proposalEndDate = field "endDate" timestamptz notNull
-      , _proposalNotificationProgress = field "notificationProgress" (varchar Nothing) notNull
+      , _proposalNotificationPercent = field "notificationPercent" notificationPercentDataType
       , _proposalLocked = field "locked" boolean notNull
       , _proposalCount = field "count" int notNull
       , _proposalServiceUnitsUnused = field "serviceUnitsUnused" int notNull
@@ -131,3 +141,23 @@ migrateDb :: Connection -> IO (Maybe (CheckedDatabaseSettings Sqlite ProposalDb)
 migrateDb conn =
   runBeamSqliteDebug putStrLn conn $
     bringUpToDateWithHooks allowDestructive migrationBackend initialSetupStep
+
+createProposal :: Connection -> Account -> ServiceUnits -> IO ()
+createProposal conn account units = do
+  currTime <- getCurrentTime
+  currTimeZone <- getCurrentTimeZone
+  let endDate = addGregorianYearsClip 1 (utctDay currTime)
+  void $ runBeamSqliteDebug putStrLn conn $
+    runInsertReturningList $
+      insert (_proposals proposalDb) $
+      insertExpressions
+        [ Proposal
+          default_
+          (val_ account)
+          (val_ units)
+          (val_ $ utcToLocalTime currTimeZone currTime { utctDay = endDate })
+          (val_ Zero)
+          (val_ False)
+          (val_ 0)
+          (val_ 0)
+        ]
