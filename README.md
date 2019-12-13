@@ -1,3 +1,5 @@
+[![badge](https://action-badges.now.sh/barrymoo/slurm-proposals)](https://github.com/barrymoo/slurm-proposals/actions)
+
 # slurm-proposals
 
 A proposal system for Slurm written in Haskell
