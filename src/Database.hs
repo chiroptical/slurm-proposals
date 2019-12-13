@@ -121,10 +121,10 @@ initialSetup = ProposalDb <$>
   (createTable "proposals" $
     Proposal
       { _proposalId = field "id" int notNull unique
-      , _proposalAccount = field "account" accountDataType
-      , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType
+      , _proposalAccount = field "account" accountDataType notNull
+      , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType notNull
       , _proposalEndDate = field "endDate" timestamptz notNull
-      , _proposalNotificationPercent = field "notificationPercent" notificationPercentDataType
+      , _proposalNotificationPercent = field "notificationPercent" notificationPercentDataType notNull
       , _proposalLocked = field "locked" boolean notNull
       , _proposalCount = field "count" int notNull
       , _proposalServiceUnitsUnused = field "serviceUnitsUnused" int notNull
