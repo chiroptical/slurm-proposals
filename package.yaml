@@ -23,6 +23,7 @@ dependencies:
 - beam-migrate
 - sqlite-simple
 - time
+- microlens
 name: slurm-proposals
 version: 0.1.0.0
 extra-source-files:

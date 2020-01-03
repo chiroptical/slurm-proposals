@@ -1,22 +1,23 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-import           Test.Hspec
-import           Database
-import           Database.SQLite.Simple         ( open )
-import           System.Directory               ( removeFile
-                                                , doesFileExist
-                                                )
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Class    (lift)
 import           Control.Monad.Trans.Identity
-import           Control.Monad.Trans.Class      ( lift )
+import           Database
+import           Database.SQLite.Simple       (open)
+import           System.Directory             (doesFileExist, removeFile)
+import           Test.Hspec
 
 newtype FileExists =
   FileExists
     { doesExist :: Bool
-    } deriving (Eq, Show)
+    }
+  deriving (Eq, Show)
 
-class MonadIO m => MonadFileExists m where
+class MonadIO m =>
+      MonadFileExists m
+  where
   mFileExists :: String -> m FileExists
 
 instance MonadFileExists IO where
@@ -32,15 +33,19 @@ tryMigrateDb :: MonadFileExists m => m Bool
 tryMigrateDb = do
   let fileName = "test.db"
   FileExists remove <- mFileExists fileName
-  if remove then liftIO $ removeFile fileName else pure ()
+  if remove
+    then liftIO $ removeFile fileName
+    else pure ()
   conn <- liftIO $ open "test.db"
   liftIO $ migrateDb conn
   FileExists exists <- mFileExists fileName
   return exists
 
 main :: IO ()
-main = hspec $ describe "Database Operations" $ do
-  it "should create test.db file" $
-    runIdentityT tryMigrateDb `shouldReturn` True
-  it "test.db should have the correct schema" pending
-  it "should enter an example"                pending
+main =
+  hspec $
+  describe "Database Operations" $ do
+    it "should create test.db file" $
+      runIdentityT tryMigrateDb `shouldReturn` True
+    it "test.db should have the correct schema" pending
+    it "should enter an example" pending
