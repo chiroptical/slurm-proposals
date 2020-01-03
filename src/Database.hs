@@ -52,11 +52,71 @@ instance FromBackendRow Sqlite NotificationPercent where
 notificationPercentDataType :: DataType Sqlite NotificationPercent
 notificationPercentDataType = DataType sqliteTextType
 
+newtype Account =
+  Account
+    { _account :: Text
+    }
+  deriving (Show, Eq)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be Account where
+  defaultSqlDataType = defaultSqlDataType . fmap _account
+
+instance HasSqlValueSyntax be Text => HasSqlValueSyntax be Account where
+  sqlValueSyntax = sqlValueSyntax . _account
+
+instance FromBackendRow Sqlite Account where
+  fromBackendRow = Account <$> fromBackendRow
+
+instance HasSqlEqualityCheck Sqlite Account
+
+accountDataType :: DataType Sqlite Account
+accountDataType = DataType sqliteTextType
+
+newtype AccountOwner =
+  AccountOwner
+    { _accountOwner :: Text
+    }
+  deriving (Show, Eq)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be AccountOwner where
+  defaultSqlDataType = defaultSqlDataType . fmap _accountOwner
+
+instance HasSqlValueSyntax be Text => HasSqlValueSyntax be AccountOwner where
+  sqlValueSyntax = sqlValueSyntax . _accountOwner
+
+instance FromBackendRow Sqlite AccountOwner where
+  fromBackendRow = AccountOwner <$> fromBackendRow
+
+instance HasSqlEqualityCheck Sqlite AccountOwner
+
+accountOwnerDataType :: DataType Sqlite AccountOwner
+accountOwnerDataType = DataType sqliteTextType
+
+newtype ServiceUnits =
+  ServiceUnits
+    { _serviceUnits :: Int
+    }
+  deriving (Show, Eq)
+
+instance BeamMigrateSqlBackend be => HasDefaultSqlDataType be ServiceUnits where
+  defaultSqlDataType = defaultSqlDataType . fmap _serviceUnits
+
+instance HasSqlValueSyntax be Int => HasSqlValueSyntax be ServiceUnits where
+  sqlValueSyntax = sqlValueSyntax . _serviceUnits
+
+instance FromBackendRow Sqlite ServiceUnits where
+  fromBackendRow = ServiceUnits <$> fromBackendRow
+
+instance HasSqlEqualityCheck Sqlite ServiceUnits
+
+serviceUnitsDataType :: DataType Sqlite ServiceUnits
+serviceUnitsDataType = DataType sqliteBigIntType
+
 data ProposalT f =
   Proposal
-    { _proposalAccount             :: Columnar f Text
-    , _proposalAccountOwner        :: Columnar f Text
-    , _proposalServiceUnits        :: Columnar f Int
+    { _proposalAccount             :: Columnar f Account
+    , _proposalAccountOwner        :: Columnar f AccountOwner
+    , _proposalServiceUnits        :: Columnar f ServiceUnits
     , _proposalEndDate             :: Columnar f LocalTime
     , _proposalNotificationPercent :: Columnar f NotificationPercent
     , _proposalLocked              :: Columnar f Bool
@@ -79,7 +139,7 @@ type ProposalId = PrimaryKey ProposalT Identity
 instance Beamable ProposalT
 
 instance Table ProposalT where
-  data PrimaryKey ProposalT f = ProposalId (Columnar f Text)
+  data PrimaryKey ProposalT f = ProposalId (Columnar f Account)
                                 deriving (Generic, Beamable)
   primaryKey = ProposalId . _proposalAccount
 
@@ -99,9 +159,9 @@ initialSetup =
   ProposalDb <$>
   (createTable "proposals" $
    Proposal
-     { _proposalAccount = field "account" (varchar Nothing) notNull unique
-     , _proposalAccountOwner = field "accountOwner" (varchar Nothing) notNull
-     , _proposalServiceUnits = field "serviceUnits" int notNull
+     { _proposalAccount = field "account" accountDataType notNull unique
+     , _proposalAccountOwner = field "accountOwner" accountOwnerDataType notNull
+     , _proposalServiceUnits = field "serviceUnits" serviceUnitsDataType notNull
      , _proposalEndDate = field "endDate" timestamptz notNull
      , _proposalNotificationPercent =
          field "notificationPercent" notificationPercentDataType notNull
@@ -123,23 +183,14 @@ migrateDb conn =
   runBeamSqliteDebug putStrLn conn $
   bringUpToDateWithHooks allowDestructive migrationBackend initialSetupStep
 
-newtype Account =
-  Account
-    { account :: Text
-    }
+maybeGetProposal :: Connection -> Account -> IO (Maybe (ProposalT Identity))
+maybeGetProposal conn account =
+  runBeamSqliteDebug putStrLn conn $
+  runSelectReturningOne $ lookup_ (_proposals proposalDb) (ProposalId account)
 
-newtype AccountOwner =
-  AccountOwner
-    { accountOwner :: Text
-    }
-
-newtype ServiceUnits =
-  ServiceUnits
-    { serviceUnits :: Int
-    }
-
-createProposal :: Connection -> Account -> AccountOwner -> ServiceUnits -> IO ()
-createProposal conn (Account account) (AccountOwner owner) (ServiceUnits units) = do
+insertNewProposal ::
+     Connection -> Account -> AccountOwner -> ServiceUnits -> IO ()
+insertNewProposal conn account owner units = do
   currTime <- getCurrentTime
   currTimeZone <- getCurrentTimeZone
   let endDate = addGregorianYearsClip 1 (utctDay currTime)
@@ -158,29 +209,42 @@ createProposal conn (Account account) (AccountOwner owner) (ServiceUnits units) 
           (val_ 0)
       ]
 
-readProposal :: Connection -> Account -> IO (Maybe (ProposalT Identity))
-readProposal conn (Account account) =
-  runBeamSqliteDebug putStrLn conn $
-  runSelectReturningOne $ lookup_ (proposalDb ^. proposals) (ProposalId account)
-
 addServiceUnits :: Connection -> Account -> ServiceUnits -> IO ()
-addServiceUnits conn account@(Account name) (ServiceUnits value) = do
-  exists <- readProposal conn account
+addServiceUnits conn account@(Account name) (ServiceUnits units) = do
+  exists <- maybeGetProposal conn account
   case exists of
     Just proposal -> do
-      let updatedProposal =
-            proposal
-              {_proposalServiceUnits = _proposalServiceUnits proposal + value}
+      let ServiceUnits oldUnits = _proposalServiceUnits proposal
+          updatedProposal =
+            proposal {_proposalServiceUnits = ServiceUnits $ oldUnits + units}
       runBeamSqliteDebug putStrLn conn $
         runUpdate $ save (proposalDb ^. proposals) updatedProposal
     Nothing -> print $ "Error: Account `" ++ T.unpack name ++ "` Doesn't Exist"
 
 changeServiceUnits :: Connection -> Account -> ServiceUnits -> IO ()
-changeServiceUnits conn account@(Account name) (ServiceUnits value) = do
-  exists <- readProposal conn account
+changeServiceUnits conn account@(Account name) units = do
+  exists <- maybeGetProposal conn account
   case exists of
     Just proposal -> do
-      let updatedProposal = proposal {_proposalServiceUnits = value}
+      let updatedProposal = proposal {_proposalServiceUnits = units}
+      runBeamSqliteDebug putStrLn conn $
+        runUpdate $ save (proposalDb ^. proposals) updatedProposal
+    Nothing -> print $ "Error: Account `" ++ T.unpack name ++ "` Doesn't Exist"
+
+modifyServiceUnits :: Connection -> Account -> ServiceUnits -> IO ()
+modifyServiceUnits conn account@(Account name) units = do
+  currTime <- getCurrentTime
+  currTimeZone <- getCurrentTimeZone
+  let endDate = addGregorianYearsClip 1 (utctDay currTime)
+  exists <- maybeGetProposal conn account
+  case exists of
+    Just proposal -> do
+      let updatedProposal =
+            proposal
+              { _proposalServiceUnits = units
+              , _proposalEndDate =
+                  utcToLocalTime currTimeZone currTime {utctDay = endDate}
+              }
       runBeamSqliteDebug putStrLn conn $
         runUpdate $ save (proposalDb ^. proposals) updatedProposal
     Nothing -> print $ "Error: Account `" ++ T.unpack name ++ "` Doesn't Exist"

@@ -11,6 +11,11 @@ main :: IO ()
 main = do
   conn <- liftIO $ open "test.db"
   liftIO $ migrateDb conn
-  liftIO $ createProposal conn "bmooreii" "bmooreii" 10000
-  result <- liftIO $ readProposal conn "bmooreii"
+  liftIO $
+    insertNewProposal
+      conn
+      (Account "bmooreii")
+      (AccountOwner "bmooreii")
+      (ServiceUnits 10000)
+  result <- liftIO $ maybeGetProposal conn (Account "bmooreii")
   print result
