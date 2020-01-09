@@ -1,5 +1,6 @@
 library:
-  source-dirs: src
+  source-dirs:
+  - src
 tests:
   slurm-proposals-test:
     source-dirs: test
@@ -16,14 +17,14 @@ tests:
 copyright: 2019 Barry Moore II
 maintainer: moore0557@gmail.com
 dependencies:
+- vector
 - text
 - base >= 4.7 && < 5
 - beam-core
 - beam-sqlite
-- beam-migrate
 - sqlite-simple
 - time
-- microlens
+- aeson
 name: slurm-proposals
 version: 0.1.0.0
 extra-source-files:
