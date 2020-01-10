@@ -1,51 +1,27 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class    (lift)
-import           Control.Monad.Trans.Identity
-import           Database
-import           Database.SQLite.Simple       (open)
-import           System.Directory             (doesFileExist, removeFile)
+import           Database                        (makeTables)
+import           Queries
+
+import           Database.Beam.Sqlite.Connection
+import           Database.SQLite.Simple          (close, open)
+
+import           System.Directory                (doesFileExist, removeFile)
 import           Test.Hspec
 
-newtype FileExists =
-  FileExists
-    { doesExist :: Bool
-    }
-  deriving (Eq, Show)
-
-class MonadIO m =>
-      MonadFileExists m
-  where
-  mFileExists :: String -> m FileExists
-
-instance MonadFileExists IO where
-  mFileExists fileName = FileExists <$> doesFileExist fileName
-
-instance MonadFileExists (IdentityT IO) where
-  mFileExists fileName = lift $ FileExists <$> doesFileExist fileName
-
--- If the test database exists, remove it
--- try to migrate it
--- test database should exist
-tryMigrateDb :: MonadFileExists m => m Bool
-tryMigrateDb = do
-  let fileName = "test.db"
-  FileExists remove <- mFileExists fileName
-  if remove
-    then liftIO $ removeFile fileName
-    else pure ()
-  conn <- liftIO $ open "test.db"
-  liftIO $ migrateDb conn
-  FileExists exists <- mFileExists fileName
-  return exists
-
 main :: IO ()
-main =
+main = do
+  exists <- doesFileExist "test.db"
+  if exists
+    then removeFile "test.db"
+    else pure ()
+  conn <- open "test.db"
+  makeTables conn
   hspec $
-  describe "Database Operations" $ do
-    it "should create test.db file" $
-      runIdentityT tryMigrateDb `shouldReturn` True
-    it "test.db should have the correct schema" pending
-    it "should enter an example" pending
+    describe "Database Operations" $ do
+      it "should insert an account" $ do
+        accountId <-
+          runBeamSqliteDebug putStrLn conn $ insertAccount "bmoore" "bmooreii"
+        accountId `shouldNotBe` Nothing
+      it "should do something else" pending
+  close conn
