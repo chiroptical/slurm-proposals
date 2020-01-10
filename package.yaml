@@ -1,6 +1,5 @@
 library:
-  source-dirs:
-  - src
+  source-dirs: src
 tests:
   slurm-proposals-test:
     source-dirs: test
