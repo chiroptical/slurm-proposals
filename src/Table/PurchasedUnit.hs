@@ -12,7 +12,7 @@ import           Database.Beam
 import           Table.Account       (AccountT)
 
 data PurchasedUnitT f =
-  PurchasedUnit
+  PurchasedUnit_
     { _purchasedUnitId             :: C f Int
     , _purchasedUnitUnits          :: C f Int
     , _purchasedUnitExpirationDate :: C f LocalTime
@@ -20,9 +20,9 @@ data PurchasedUnitT f =
     }
   deriving (Generic, Beamable)
 
-type PurchasedUnit = PurchasedUnitT Identity
+type PurchasedUnit_ = PurchasedUnitT Identity
 
-deriving instance Show PurchasedUnit
+deriving instance Show PurchasedUnit_
 
 instance Table PurchasedUnitT where
   data PrimaryKey PurchasedUnitT f = PurchasedUnitId (C f Int)

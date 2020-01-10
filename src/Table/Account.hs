@@ -12,16 +12,16 @@ import           Database.Beam
 deriving instance Show (PrimaryKey AccountT Identity)
 
 data AccountT f =
-  Account
+  Account_
     { _accountId    :: C f Int
     , _accountName  :: C f Text
     , _accountOwner :: C f Text
     }
   deriving (Generic, Beamable)
 
-type Account = AccountT Identity
+type Account_ = AccountT Identity
 
-deriving instance Show Account
+deriving instance Show Account_
 
 instance Table AccountT where
   data PrimaryKey AccountT f = AccountId (C f Int)

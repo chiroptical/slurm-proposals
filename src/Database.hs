@@ -5,7 +5,7 @@
 module Database where
 
 import           Database.Beam
-import           Database.SQLite.Simple
+import           Database.SQLite.Simple (Connection, execute_, withTransaction)
 
 import           Table.Account
 import           Table.Proposal
@@ -59,4 +59,37 @@ proposalsDb =
             , _statisticAccount = AccountId "account__id"
             }
     }
--- FIXME: Instead of using Beam migrations, just create the tables and db
+
+makeTables :: Connection -> IO ()
+makeTables conn =
+  withTransaction conn $ do
+    execute_
+      conn
+      "CREATE TABLE IF NOT EXISTS accounts \
+      \( id INTEGER PRIMARY KEY AUTOINCREMENT \
+      \, name VARCHAR NOT NULL UNIQUE \
+      \, owner VARCHAR NOT NULL)"
+    execute_
+      conn
+      "CREATE TABLE IF NOT EXISTS proposals \
+      \( id INTEGER PRIMARY KEY AUTOINCREMENT \
+      \, service_units INT NOT NULL \
+      \, expiration_date DATE NOT NULL \
+      \, notification_percent INT NOT NULL \
+      \, locked BOOL NOT NULL \
+      \, account__id INT NOT NULL \
+      \)"
+    execute_
+      conn
+      "CREATE TABLE IF NOT EXISTS purchased_units \
+      \( id INTEGER PRIMARY KEY AUTOINCREMENT \
+      \, service_units INT NOT NULL \
+      \, account__id INT NOT NULL \
+      \)"
+    execute_
+      conn
+      "CREATE TABLE IF NOT EXISTS statistics \
+      \( id INTEGER PRIMARY KEY AUTOINCREMENT \
+      \, unused_service_units INT NOT NULL \
+      \, account__id INT NOT NULL \
+      \)"

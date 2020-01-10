@@ -11,16 +11,16 @@ import           Database.Beam
 import           Table.Account (AccountT)
 
 data StatisticT f =
-  Statistic
+  Statistic_
     { _statisticId          :: C f Int
     , _statisticUnusedUnits :: C f Int
     , _statisticAccount     :: PrimaryKey AccountT f
     }
   deriving (Generic, Beamable)
 
-type Statistic = StatisticT Identity
+type Statistic_ = StatisticT Identity
 
-deriving instance Show Statistic
+deriving instance Show Statistic_
 
 instance Table StatisticT where
   data PrimaryKey StatisticT f = StatisticId (C f Int)

@@ -20,7 +20,7 @@ data NotificationPercent
   deriving (Eq, Ord, Enum, Show, Read)
 
 data ProposalT f =
-  Proposal
+  Proposal_
     { _proposalId                  :: C f Int
     , _proposalServiceUnits        :: C f Int
     , _proposalExpirationDate      :: C f LocalTime
@@ -30,9 +30,9 @@ data ProposalT f =
     }
   deriving (Generic, Beamable)
 
-type Proposal = ProposalT Identity
+type Proposal_ = ProposalT Identity
 
-deriving instance Show Proposal
+deriving instance Show Proposal_
 
 instance Table ProposalT where
   data PrimaryKey ProposalT f = ProposalId (C f Int)
