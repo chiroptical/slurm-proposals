@@ -24,6 +24,8 @@ type Account_ = AccountT Identity
 
 deriving instance Show Account_
 
+deriving instance Eq Account_
+
 instance Table AccountT where
   data PrimaryKey AccountT f = AccountId (C f Int)
                                deriving (Generic, Beamable)

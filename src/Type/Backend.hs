@@ -8,3 +8,4 @@ data BackendError
   | ProposalDoesntExist Text
   | ProposalIdDoesntExist Int
   | InternalError Text
+  deriving (Show, Eq)
