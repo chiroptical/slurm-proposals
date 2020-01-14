@@ -52,6 +52,7 @@ proposalsDb =
             { _purchasedUnitId = "id"
             , _purchasedUnitUnits = "service_units"
             , _purchasedUnitExpirationDate = "expiration_date"
+            , _purchasedUnitConsumed = "consumed"
             , _purchasedUnitAccount = AccountId "account__id"
             }
     , _proposalsStatistics =
@@ -89,6 +90,8 @@ makeTables conn =
       "CREATE TABLE IF NOT EXISTS purchased_units \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, service_units INT NOT NULL \
+      \, expiration_date DATE NOT NULL \
+      \, consumed BOOL NOT NULL \
       \, account__id INT NOT NULL \
       \)"
     execute_

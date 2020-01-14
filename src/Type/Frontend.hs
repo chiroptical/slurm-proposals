@@ -27,6 +27,7 @@ data PurchasedUnit =
   PurchasedUnit
     { purchasedUnitServiceUnits   :: Int
     , purchasedUnitExpirationDate :: LocalTime
+    , purchasedUnitConsumed       :: Bool
     , purchasedUnitAccount        :: Account
     }
   deriving (Eq, Show)

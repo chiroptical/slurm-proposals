@@ -16,6 +16,7 @@ data PurchasedUnitT f =
     { _purchasedUnitId             :: C f Int
     , _purchasedUnitUnits          :: C f Int
     , _purchasedUnitExpirationDate :: C f LocalTime
+    , _purchasedUnitConsumed       :: C f Bool
     , _purchasedUnitAccount        :: PrimaryKey AccountT f
     }
   deriving (Generic, Beamable)
