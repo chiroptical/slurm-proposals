@@ -31,16 +31,16 @@ getAccount name = (fmap . fmap) toAccount (getAccount_ name)
 
 getAccount_ :: _ => Text -> m (Either BackendError Account_)
 getAccount_ name = do
-  account_ <-
+  mAccount_ <-
     runSelectReturningOne $
     select $ do
       account <- selectAllAccounts
       guard_ (_accountName account ==. val_ name)
       pure account
   pure $
-    case account_ of
-      Nothing      -> Left $ AccountDoesntExist name
-      Just account -> Right account
+    case mAccount_ of
+      Nothing       -> Left $ AccountDoesntExist name
+      Just account_ -> Right account_
 
 getAccountById :: _ => Int -> m (Either BackendError Account)
 getAccountById id = (fmap . fmap) toAccount (getAccountById_ id)

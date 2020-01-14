@@ -6,4 +6,5 @@ data BackendError
   = AccountDoesntExist Text
   | AccountIdDoesntExist Int
   | ProposalDoesntExist Text
+  | ProposalIdDoesntExist Int
   | InternalError Text
