@@ -1,5 +1,4 @@
 module Main where
 
 main :: IO ()
-main =
-  putStrLn "place holder"
+main = putStrLn "place holder"

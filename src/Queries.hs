@@ -7,59 +7,106 @@
 module Queries where
 
 import           Database
+import           Datatypes
+import           Errors
 import           Table.Account
 import           Table.Proposal
 import           Table.PurchasedUnit
 import           Table.Statistic
 
+import           Control.Monad.Trans.Class (lift)
+import           Data.Maybe                (fromMaybe)
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Database.Beam
 import           Database.Beam.Backend.SQL
+
+selectAllAccounts ::
+     BeamSqlBackend be
+  => Q be ProposalsDb QBaseScope (AccountT (QExpr be QBaseScope))
+selectAllAccounts = all_ (_proposalsAccount proposalsDb)
 
 insertAccount :: _ => Text -> Text -> m (Maybe Int)
 insertAccount name owner = do
   runInsert $
     insert (_proposalsAccount proposalsDb) $
     insertExpressions [Account_ default_ (val_ name) (val_ owner)]
-  runSelectReturningOne $
-    select $ do
-      account <- all_ (_proposalsAccount proposalsDb)
-      guard_ (_accountName account ==. val_ name)
-      pure $ _accountId account
+  getAccountId name
 
-getAccount :: _ => Text -> m (Maybe Account_)
-getAccount name =
+getAccount_ :: _ => Text -> m (Maybe Account_)
+getAccount_ name =
   runSelectReturningOne $
   select $ do
-    account <- all_ (_proposalsAccount proposalsDb)
+    account <- selectAllAccounts
     guard_ (_accountName account ==. val_ name)
     pure account
+
+getAccount :: _ => Text -> m (Maybe Account)
+getAccount name = do
+  account_ <- getAccount_ name
+  case account_ of
+    Nothing  -> pure Nothing
+    Just acc -> pure . Just $ Account (_accountName acc) (_accountOwner acc)
 
 getAccountId :: _ => Text -> m (Maybe Int)
 getAccountId name =
   runSelectReturningOne $
   select $ do
-    account <- all_ (_proposalsAccount proposalsDb)
+    account <- selectAllAccounts
     guard_ (_accountName account ==. val_ name)
     pure $ _accountId account
 
-getProposal :: _ => Text -> m (Either Text Proposal_)
-getProposal name = do
-  id <- getAccountId name
-  case id of
-    Nothing -> pure . Left $ T.concat ["Accout ", name, " doesn't exist"]
-    Just _id -> do
-      result <-
+getAccountById :: _ => Int -> m (Maybe Account_)
+getAccountById id =
+  runSelectReturningOne $
+  select $ do
+    account <- selectAllAccounts
+    guard_ (_accountId account ==. val_ id)
+    pure account
+
+getProposal_ :: _ => Text -> m (Either DatabaseError Proposal_)
+getProposal_ name = do
+  id_ <- getAccountId name
+  case id_ of
+    Nothing -> pure . Left $ AccountDoesntExist name
+    Just id' -> do
+      proposal_ <-
         runSelectReturningOne $
         select $ do
           proposal <- all_ (_proposalsProposals proposalsDb)
-          guard_ (_proposalAccount proposal ==. val_ (AccountId _id))
+          guard_ (_proposalAccount proposal ==. val_ (AccountId id'))
           pure proposal
-      case result of
-        Just _result -> pure . Right $ _result
-        Nothing ->
-          pure . Left $ T.concat ["Account ", name, " doesn't have a proposal"]
+      case proposal_ of
+        Nothing       -> pure . Left $ ProposalDoesntExist name
+        Just proposal -> pure . Right $ proposal
+
+getProposal :: _ => Text -> m (Either DatabaseError Proposal)
+getProposal name = do
+  proposal_ <- getProposal_ name
+  case proposal_ of
+    Left l -> pure . Left $ l
+    Right proposal -> do
+      account_ <-
+        runSelectReturningOne $
+        lookup_ (_proposalsAccount proposalsDb) (_proposalAccount proposal)
+      case account_ of
+        Nothing -> pure . Left $ InternalError ""
+        Just account ->
+          pure . Right $
+          Proposal
+            (_proposalServiceUnits proposal)
+            (_proposalExpirationDate proposal)
+            (_proposalNotificationPercent proposal)
+            (_proposalLocked proposal)
+            (Account (_accountName account) (_accountOwner account))
+
+getProposalById :: _ => Int -> m (Maybe Proposal_)
+getProposalById id =
+  runSelectReturningOne $
+  select $ do
+    proposal <- all_ (_proposalsProposals proposalsDb)
+    guard_ (_proposalAccount proposal ==. val_ (AccountId id))
+    pure proposal
 
 getPurchasedUnits :: _ => Text -> m (Either Text [PurchasedUnit_])
 getPurchasedUnits name = do
