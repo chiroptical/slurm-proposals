@@ -1,8 +1,9 @@
-module Errors where
+module Type.Backend where
 
 import           Data.Text (Text)
 
-data DatabaseError
+data BackendError
   = AccountDoesntExist Text
+  | AccountIdDoesntExist Int
   | ProposalDoesntExist Text
   | InternalError Text

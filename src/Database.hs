@@ -29,7 +29,11 @@ proposalsDb =
         setEntityName "accounts" <>
         modifyTableFields
           tableModification
-            {_accountId = "id", _accountName = "name", _accountOwner = "owner"}
+            { _accountId = "id"
+            , _accountName = "name"
+            , _accountOwner = "owner"
+            , _accountDepartment = "department"
+            }
     , _proposalsProposals =
         setEntityName "proposals" <>
         modifyTableFields
@@ -68,7 +72,8 @@ makeTables conn =
       "CREATE TABLE IF NOT EXISTS accounts \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, name VARCHAR NOT NULL UNIQUE \
-      \, owner VARCHAR NOT NULL)"
+      \, owner VARCHAR NOT NULL \
+      \, department VARCHAR NOT NULL)"
     execute_
       conn
       "CREATE TABLE IF NOT EXISTS proposals \
