@@ -5,6 +5,10 @@
 A proposal system for Slurm written in Haskell. This is a work in progress and
 doesn't yet function.
 
+## Important Questions
+
+1. For database operations should we run under transactions?
+
 ## Why?
 
 This is a more robust replacement for [slurm-bank](https://github.com/barrymoo/slurm-bank).

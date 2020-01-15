@@ -1,7 +1,6 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE TupleSections    #-}
 
 module Query.PurchasedUnit where
 
@@ -12,14 +11,14 @@ import           Table.PurchasedUnit
 import           Type.Backend
 import           Type.Frontend
 
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Text                       (Text)
+import qualified Data.Text                       as T
 import           Database.Beam
 import           Database.Beam.Backend.SQL
+import           Database.Beam.Sqlite.Connection (Sqlite)
 
 selectAllPurchasedUnits ::
-     BeamSqlBackend be
-  => Q be ProposalsDb QBaseScope (PurchasedUnitT (QExpr be QBaseScope))
+     Q Sqlite ProposalsDb QBaseScope (PurchasedUnitT (QExpr Sqlite QBaseScope))
 selectAllPurchasedUnits = all_ (_proposalsPurchasedUnits proposalsDb)
 
 toProposal :: (Account_, PurchasedUnit_) -> PurchasedUnit
@@ -32,37 +31,74 @@ toProposal (Account_ { _accountName = name
                                        }) =
   PurchasedUnit sus exp consumed (Account name owner dept)
 
-getPurchasedUnits :: _ => Text -> m (Either BackendError [PurchasedUnit])
-getPurchasedUnits = undefined
+getPurchasedUnits ::
+     MonadBeam Sqlite m => Text -> m (Either BackendError [PurchasedUnit])
+getPurchasedUnits name = do
+  ePurchasedUnit_ <- getPurchasedUnits_ name
+  case ePurchasedUnit_ of
+    Left err -> pure . Left $ err
+    Right (account_, purchasedUnits_) ->
+      pure . Right $ toProposal <$> zip (repeat account_) purchasedUnits_
 
 getPurchasedUnits_ ::
-     _ => Text -> m (Either BackendError (Account_, [PurchasedUnit_]))
+     MonadBeam Sqlite m
+  => Text
+  -> m (Either BackendError (Account_, [PurchasedUnit_]))
 getPurchasedUnits_ name = do
   mAccount_ <- getAccount_ name
   case mAccount_ of
     Left err -> pure . Left $ err
-    Right account_ -> do
-      purchasedUnits_ <-
-        runSelectReturningList $
-        select $ do
-          purchasedUnit <- selectAllPurchasedUnits
-          guard_
-            (_purchasedUnitAccount purchasedUnit ==.
-             val_ (AccountId $ _accountId account_))
-          pure purchasedUnit
-      pure . Right $ (account_, purchasedUnits_)
+    Right account_ ->
+      fmap (Right . (account_, )) $
+      runSelectReturningList $
+      select $ do
+        purchasedUnit <- selectAllPurchasedUnits
+        guard_
+          (_purchasedUnitAccount purchasedUnit ==. val_ (primaryKey account_))
+        pure purchasedUnit
 
-getPurchasedUnitById :: _ => Int -> m (Either BackendError PurchasedUnit)
-getPurchasedUnitById = undefined -- (fmap . fmap) toProposal . getProposalById_
+getPurchasedUnitById ::
+     MonadBeam Sqlite m => Int -> m (Either BackendError PurchasedUnit)
+getPurchasedUnitById = (fmap . fmap) toProposal . getPurchasedUnitById_
 
 getPurchasedUnitById_ ::
-     _ => Int -> m (Either BackendError (Account_, PurchasedUnit_))
-getPurchasedUnitById_ id = undefined
+     MonadBeam Sqlite m
+  => Int
+  -> m (Either BackendError (Account_, PurchasedUnit_))
+getPurchasedUnitById_ id = do
+  mPurchasedUnit_ <-
+    runSelectReturningOne $
+    select $ do
+      purchasedUnit <- selectAllPurchasedUnits
+      guard_ (_purchasedUnitId purchasedUnit ==. val_ id)
+      pure purchasedUnit
+  case mPurchasedUnit_ of
+    Nothing -> pure . Left $ PurchasedUnitIdDoesntExist id
+    Just purchasedUnit_ -> do
+      let AccountId id = _purchasedUnitAccount purchasedUnit_
+      fmap (, purchasedUnit_) <$> getAccountById_ id
 
 insertPurchasedUnit ::
-     _ => PurchasedUnit -> m (Either BackendError (Account_, PurchasedUnit_))
+     MonadBeam Sqlite m
+  => PurchasedUnit
+  -> m (Either BackendError (Account_, PurchasedUnit_))
 insertPurchasedUnit PurchasedUnit { purchasedUnitServiceUnits = sus
                                   , purchasedUnitExpirationDate = exp
                                   , purchasedUnitConsumed = locked
                                   , purchasedUnitAccount = Account {accountName = name}
-                                  } = undefined
+                                  } = do
+  eAccount_ <- getAccount_ name
+  case eAccount_ of
+    Left err -> pure . Left $ err
+    Right account_ -> do
+      runInsert $
+        insert (_proposalsPurchasedUnits proposalsDb) $
+        insertExpressions
+          [ PurchasedUnit_
+              default_
+              (val_ sus)
+              (val_ exp)
+              (val_ locked)
+              (val_ $ primaryKey account_)
+          ]
+      (fmap . fmap . fmap) last (getPurchasedUnits_ name)

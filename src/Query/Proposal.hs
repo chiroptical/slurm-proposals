@@ -1,8 +1,5 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs            #-}
 
 module Query.Proposal where
 
@@ -13,14 +10,14 @@ import           Table.Proposal
 import           Type.Backend
 import           Type.Frontend
 
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Text                       (Text)
+import qualified Data.Text                       as T
 import           Database.Beam
 import           Database.Beam.Backend.SQL
+import           Database.Beam.Sqlite.Connection (Sqlite)
 
 selectAllProposals ::
-     BeamSqlBackend be
-  => Q be ProposalsDb QBaseScope (ProposalT (QExpr be QBaseScope))
+     Q Sqlite ProposalsDb QBaseScope (ProposalT (QExpr Sqlite QBaseScope))
 selectAllProposals = all_ (_proposalsProposals proposalsDb)
 
 toProposal :: (Account_, Proposal_) -> Proposal
@@ -34,10 +31,11 @@ toProposal (Account_ { _accountName = name
                                   }) =
   Proposal sus exp notif locked (Account name owner dept)
 
-getProposal :: _ => Text -> m (Either BackendError Proposal)
+getProposal :: MonadBeam Sqlite m => Text -> m (Either BackendError Proposal)
 getProposal = (fmap . fmap) toProposal . getProposal_
 
-getProposal_ :: _ => Text -> m (Either BackendError (Account_, Proposal_))
+getProposal_ ::
+     MonadBeam Sqlite m => Text -> m (Either BackendError (Account_, Proposal_))
 getProposal_ name = do
   mAccount_ <- getAccount_ name
   case mAccount_ of
@@ -47,19 +45,18 @@ getProposal_ name = do
         runSelectReturningOne $
         select $ do
           proposal <- selectAllProposals
-          guard_
-            (_proposalAccount proposal ==.
-             val_ (AccountId $ _accountId account_))
+          guard_ (_proposalAccount proposal ==. val_ (primaryKey account_))
           pure proposal
       pure $
         case proposal_ of
           Nothing        -> Left $ ProposalDoesntExist name
           Just proposal_ -> Right (account_, proposal_)
 
-getProposalById :: _ => Int -> m (Either BackendError Proposal)
+getProposalById :: MonadBeam Sqlite m => Int -> m (Either BackendError Proposal)
 getProposalById = (fmap . fmap) toProposal . getProposalById_
 
-getProposalById_ :: _ => Int -> m (Either BackendError (Account_, Proposal_))
+getProposalById_ ::
+     MonadBeam Sqlite m => Int -> m (Either BackendError (Account_, Proposal_))
 getProposalById_ id = do
   mProposal_ <-
     runSelectReturningOne $
@@ -75,7 +72,10 @@ getProposalById_ id = do
         Left err       -> pure $ Left err
         Right account_ -> pure $ Right (account_, proposal_)
 
-insertProposal :: _ => Proposal -> m (Either BackendError (Account_, Proposal_))
+insertProposal ::
+     MonadBeam Sqlite m
+  => Proposal
+  -> m (Either BackendError (Account_, Proposal_))
 insertProposal Proposal { proposalServiceUnits = sus
                         , proposalExpirationDate = exp
                         , proposalNotificationPercent = notif
@@ -86,15 +86,21 @@ insertProposal Proposal { proposalServiceUnits = sus
   case mAccount_ of
     Left err -> pure . Left $ err
     Right account_ -> do
-      runInsert $
-        insert (_proposalsProposals proposalsDb) $
-        insertExpressions
-          [ Proposal_
-              default_
-              (val_ sus)
-              (val_ exp)
-              (val_ notif)
-              (val_ locked)
-              (val_ $ primaryKey account_)
-          ]
-      getProposal_ name
+      eProposal_ <- getProposal_ name
+      case eProposal_ of
+        Right _ -> pure . Left $ ProposalAlreadyExist name
+        Left (ProposalDoesntExist _) -> do
+          runInsert $
+            insert (_proposalsProposals proposalsDb) $
+            insertExpressions
+              [ Proposal_
+                  default_
+                  (val_ sus)
+                  (val_ exp)
+                  (val_ notif)
+                  (val_ locked)
+                  (val_ $ primaryKey account_)
+              ]
+          getProposal_ name
+        -- This shouldn't happen...
+        Left err -> pure . Left $ err

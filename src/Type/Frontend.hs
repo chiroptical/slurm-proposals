@@ -35,6 +35,7 @@ data PurchasedUnit =
 data Statistic =
   Statistic
     { statisticUnusedServiceUnits :: Int
+    , statisticExpirationDate     :: LocalTime
     , statisticAccount            :: Account
     }
   deriving (Eq, Show)

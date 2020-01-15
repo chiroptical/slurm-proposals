@@ -1,19 +1,18 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs            #-}
 
 module Query.Account where
 
 import           Database
 import           Table.Account
 import           Type.Backend
-import           Type.Frontend             (Account (..))
+import           Type.Frontend                   (Account (..))
 
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Text                       (Text)
+import qualified Data.Text                       as T
 import           Database.Beam
 import           Database.Beam.Backend.SQL
+import           Database.Beam.Sqlite.Connection (Sqlite)
 
 selectAllAccounts ::
      BeamSqlBackend be
@@ -26,10 +25,10 @@ toAccount Account_ { _accountName = name
                    , _accountDepartment = dept
                    } = Account name owner dept
 
-getAccount :: _ => Text -> m (Either BackendError Account)
+getAccount :: MonadBeam Sqlite m => Text -> m (Either BackendError Account)
 getAccount name = (fmap . fmap) toAccount (getAccount_ name)
 
-getAccount_ :: _ => Text -> m (Either BackendError Account_)
+getAccount_ :: MonadBeam Sqlite m => Text -> m (Either BackendError Account_)
 getAccount_ name = do
   mAccount_ <-
     runSelectReturningOne $
@@ -42,10 +41,10 @@ getAccount_ name = do
       Nothing       -> Left $ AccountDoesntExist name
       Just account_ -> Right account_
 
-getAccountById :: _ => Int -> m (Either BackendError Account)
+getAccountById :: MonadBeam Sqlite m => Int -> m (Either BackendError Account)
 getAccountById id = (fmap . fmap) toAccount (getAccountById_ id)
 
-getAccountById_ :: _ => Int -> m (Either BackendError Account_)
+getAccountById_ :: MonadBeam Sqlite m => Int -> m (Either BackendError Account_)
 getAccountById_ id = do
   account_ <-
     runSelectReturningOne $
@@ -58,7 +57,8 @@ getAccountById_ id = do
       Nothing      -> Left $ AccountIdDoesntExist id
       Just account -> Right account
 
-insertAccount :: _ => Account -> m (Either BackendError Account_)
+insertAccount ::
+     MonadBeam Sqlite m => Account -> m (Either BackendError Account_)
 insertAccount Account { accountName = name
                       , accountOwner = owner
                       , accountDepartment = dept

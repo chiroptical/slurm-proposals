@@ -60,7 +60,8 @@ proposalsDb =
         modifyTableFields
           tableModification
             { _statisticId = "id"
-            , _statisticUnusedUnits = "unused_service_units"
+            , _statisticUnusedServiceUnits = "unused_service_units"
+            , _statisticExpirationDate = "expiration_date"
             , _statisticAccount = AccountId "account__id"
             }
     }
@@ -83,7 +84,7 @@ makeTables conn =
       \, expiration_date DATE NOT NULL \
       \, notification_percent INT NOT NULL \
       \, locked BOOL NOT NULL \
-      \, account__id INT NOT NULL \
+      \, account__id INT NOT NULL UNIQUE \
       \)"
     execute_
       conn
@@ -99,5 +100,6 @@ makeTables conn =
       "CREATE TABLE IF NOT EXISTS statistics \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, unused_service_units INT NOT NULL \
+      \, expiration_date DATE NOT NULL \
       \, account__id INT NOT NULL \
       \)"
