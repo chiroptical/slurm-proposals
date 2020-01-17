@@ -6,15 +6,17 @@
 
 module Table.Statistic where
 
-import           Data.Text     (Text)
+import           Data.Text           (Text)
+import           Data.Time.LocalTime (LocalTime)
 import           Database.Beam
-import           Table.Account (AccountT)
+import           Table.Account       (AccountT)
 
 data StatisticT f =
   Statistic_
-    { _statisticId          :: C f Int
-    , _statisticUnusedUnits :: C f Int
-    , _statisticAccount     :: PrimaryKey AccountT f
+    { _statisticId                 :: C f Int
+    , _statisticUnusedServiceUnits :: C f Int
+    , _statisticExpirationDate     :: C f LocalTime
+    , _statisticAccount            :: PrimaryKey AccountT f
     }
   deriving (Generic, Beamable)
 

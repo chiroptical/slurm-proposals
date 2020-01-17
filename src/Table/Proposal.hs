@@ -1,15 +1,20 @@
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 module Table.Proposal where
 
-import           Data.Text           (Text)
+import           Data.Text                       (Text)
 import           Data.Time.LocalTime
 import           Database.Beam
-import           Table.Account       (AccountT)
+import           Database.Beam.Backend.SQL
+import           Database.Beam.Sqlite.Connection (Sqlite)
+import           Table.Account                   (AccountT)
 
 data NotificationPercent
   = Zero
@@ -18,6 +23,13 @@ data NotificationPercent
   | SeventyFive
   | Hundred
   deriving (Eq, Ord, Enum, Show, Read)
+
+instance HasSqlValueSyntax be Int =>
+         HasSqlValueSyntax be NotificationPercent where
+  sqlValueSyntax = sqlValueSyntax . fromEnum
+
+instance FromBackendRow Sqlite NotificationPercent where
+  fromBackendRow = toEnum <$> fromBackendRow
 
 data ProposalT f =
   Proposal_

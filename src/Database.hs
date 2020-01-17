@@ -29,7 +29,11 @@ proposalsDb =
         setEntityName "accounts" <>
         modifyTableFields
           tableModification
-            {_accountId = "id", _accountName = "name", _accountOwner = "owner"}
+            { _accountId = "id"
+            , _accountName = "name"
+            , _accountOwner = "owner"
+            , _accountDepartment = "department"
+            }
     , _proposalsProposals =
         setEntityName "proposals" <>
         modifyTableFields
@@ -48,6 +52,7 @@ proposalsDb =
             { _purchasedUnitId = "id"
             , _purchasedUnitUnits = "service_units"
             , _purchasedUnitExpirationDate = "expiration_date"
+            , _purchasedUnitConsumed = "consumed"
             , _purchasedUnitAccount = AccountId "account__id"
             }
     , _proposalsStatistics =
@@ -55,7 +60,8 @@ proposalsDb =
         modifyTableFields
           tableModification
             { _statisticId = "id"
-            , _statisticUnusedUnits = "unused_service_units"
+            , _statisticUnusedServiceUnits = "unused_service_units"
+            , _statisticExpirationDate = "expiration_date"
             , _statisticAccount = AccountId "account__id"
             }
     }
@@ -68,7 +74,8 @@ makeTables conn =
       "CREATE TABLE IF NOT EXISTS accounts \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, name VARCHAR NOT NULL UNIQUE \
-      \, owner VARCHAR NOT NULL)"
+      \, owner VARCHAR NOT NULL \
+      \, department VARCHAR NOT NULL)"
     execute_
       conn
       "CREATE TABLE IF NOT EXISTS proposals \
@@ -77,13 +84,15 @@ makeTables conn =
       \, expiration_date DATE NOT NULL \
       \, notification_percent INT NOT NULL \
       \, locked BOOL NOT NULL \
-      \, account__id INT NOT NULL \
+      \, account__id INT NOT NULL UNIQUE \
       \)"
     execute_
       conn
       "CREATE TABLE IF NOT EXISTS purchased_units \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, service_units INT NOT NULL \
+      \, expiration_date DATE NOT NULL \
+      \, consumed BOOL NOT NULL \
       \, account__id INT NOT NULL \
       \)"
     execute_
@@ -91,5 +100,6 @@ makeTables conn =
       "CREATE TABLE IF NOT EXISTS statistics \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, unused_service_units INT NOT NULL \
+      \, expiration_date DATE NOT NULL \
       \, account__id INT NOT NULL \
       \)"

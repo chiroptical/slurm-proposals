@@ -16,12 +16,14 @@ tests:
 copyright: 2019 Barry Moore II
 maintainer: moore0557@gmail.com
 dependencies:
+- transformers
 - base >= 4.7 && < 5
 - beam-core
 - beam-sqlite
 - sqlite-simple
 - time
 - text
+- optparse-applicative
 name: slurm-proposals
 version: 0.1.0.0
 extra-source-files:
