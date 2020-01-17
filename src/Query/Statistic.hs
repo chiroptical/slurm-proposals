@@ -41,7 +41,7 @@ getStatistics_ ::
   => Text
   -> m (Either BackendError (Account_, [Statistic_]))
 getStatistics_ name = do
-  mAccount_ <- getAccount_ name
+  mAccount_ <- accountByName_ name
   case mAccount_ of
     Left err -> pure . Left $ err
     Right account_ ->
@@ -69,7 +69,7 @@ getStatisticById_ id = do
     Nothing -> pure . Left $ StatisticIdDoesntExist id
     Just statistic_ -> do
       let AccountId id = _statisticAccount statistic_
-      fmap (, statistic_) <$> getAccountById_ id
+      fmap (, statistic_) <$> accountById_ id
 
 insertStatistic ::
      MonadBeam Sqlite m
@@ -79,7 +79,7 @@ insertStatistic Statistic { statisticUnusedServiceUnits = sus
                           , statisticExpirationDate = exp
                           , statisticAccount = Account {accountName = name}
                           } = do
-  eAccount_ <- getAccount_ name
+  eAccount_ <- accountByName_ name
   case eAccount_ of
     Left err -> pure . Left $ err
     Right account_ -> do

@@ -37,7 +37,7 @@ getProposal = (fmap . fmap) toProposal . getProposal_
 getProposal_ ::
      MonadBeam Sqlite m => Text -> m (Either BackendError (Account_, Proposal_))
 getProposal_ name = do
-  mAccount_ <- getAccount_ name
+  mAccount_ <- accountByName_ name
   case mAccount_ of
     Left err -> pure $ Left err
     Right account_ -> do
@@ -67,7 +67,7 @@ getProposalById_ id = do
   case mProposal_ of
     Nothing -> pure . Left $ ProposalIdDoesntExist id
     Just proposal_ -> do
-      mAccount_ <- getAccountById_ (_proposalId proposal_)
+      mAccount_ <- accountById_ (_proposalId proposal_)
       case mAccount_ of
         Left err       -> pure $ Left err
         Right account_ -> pure $ Right (account_, proposal_)
@@ -82,7 +82,7 @@ insertProposal Proposal { proposalServiceUnits = sus
                         , proposalLocked = locked
                         , proposalAccount = Account {accountName = name}
                         } = do
-  mAccount_ <- getAccount_ name
+  mAccount_ <- accountByName_ name
   case mAccount_ of
     Left err -> pure . Left $ err
     Right account_ -> do

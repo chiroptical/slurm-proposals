@@ -45,7 +45,7 @@ getPurchasedUnits_ ::
   => Text
   -> m (Either BackendError (Account_, [PurchasedUnit_]))
 getPurchasedUnits_ name = do
-  mAccount_ <- getAccount_ name
+  mAccount_ <- accountByName_ name
   case mAccount_ of
     Left err -> pure . Left $ err
     Right account_ ->
@@ -76,7 +76,7 @@ getPurchasedUnitById_ id = do
     Nothing -> pure . Left $ PurchasedUnitIdDoesntExist id
     Just purchasedUnit_ -> do
       let AccountId id = _purchasedUnitAccount purchasedUnit_
-      fmap (, purchasedUnit_) <$> getAccountById_ id
+      fmap (, purchasedUnit_) <$> accountById_ id
 
 insertPurchasedUnit ::
      MonadBeam Sqlite m
@@ -87,7 +87,7 @@ insertPurchasedUnit PurchasedUnit { purchasedUnitServiceUnits = sus
                                   , purchasedUnitConsumed = locked
                                   , purchasedUnitAccount = Account {accountName = name}
                                   } = do
-  eAccount_ <- getAccount_ name
+  eAccount_ <- accountByName_ name
   case eAccount_ of
     Left err -> pure . Left $ err
     Right account_ -> do
