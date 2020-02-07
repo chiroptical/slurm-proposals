@@ -1,5 +1,11 @@
 [![badge](https://action-badges.now.sh/barrymoo/slurm-proposals)](https://github.com/barrymoo/slurm-proposals/actions)
 
+TODO
+---
+
+Need to figure out a monad transformer stack to operate in and update database
+and CLI functions to operate in it.
+
 # slurm-proposals
 
 A proposal system for Slurm written in Haskell. This is a work in progress and

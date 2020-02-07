@@ -2,3 +2,4 @@
 slurm-proposals.cabal
 *~
 test.db
+proposals.db

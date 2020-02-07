@@ -9,7 +9,6 @@ data Account =
   Account
     { accountName       :: Text
     , accountOwner      :: Text
-    , accountDepartment :: Text
     }
   deriving (Eq, Show)
 

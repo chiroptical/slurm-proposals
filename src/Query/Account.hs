@@ -23,8 +23,7 @@ selectAllAccounts = all_ (_proposalsAccount proposalsDb)
 toAccount :: Account_ -> Account
 toAccount Account_ { _accountName = name
                    , _accountOwner = owner
-                   , _accountDepartment = dept
-                   } = Account name owner dept
+                   } = Account name owner
 
 selectAccountsWhere ::
      ( SqlValable a
@@ -57,9 +56,8 @@ insertAccount ::
      MonadBeam Sqlite m => Account -> m (Either BackendError Account_)
 insertAccount Account { accountName = name
                       , accountOwner = owner
-                      , accountDepartment = dept
                       } = do
   runInsert $
     insert (_proposalsAccount proposalsDb) $
-    insertExpressions [Account_ default_ (val_ name) (val_ owner) (val_ dept)]
+    insertExpressions [Account_ default_ (val_ name) (val_ owner)]
   accountByName_ name

@@ -24,12 +24,11 @@ selectAllPurchasedUnits = all_ (_proposalsPurchasedUnits proposalsDb)
 toProposal :: (Account_, PurchasedUnit_) -> PurchasedUnit
 toProposal (Account_ { _accountName = name
                      , _accountOwner = owner
-                     , _accountDepartment = dept
                      }, PurchasedUnit_ { _purchasedUnitUnits = sus
                                        , _purchasedUnitExpirationDate = exp
                                        , _purchasedUnitConsumed = consumed
                                        }) =
-  PurchasedUnit sus exp consumed (Account name owner dept)
+  PurchasedUnit sus exp consumed (Account name owner)
 
 getPurchasedUnits ::
      MonadBeam Sqlite m => Text -> m (Either BackendError [PurchasedUnit])

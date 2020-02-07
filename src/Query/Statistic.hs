@@ -24,11 +24,10 @@ selectAllStatistics = all_ (_proposalsStatistics proposalsDb)
 toStatistic :: (Account_, Statistic_) -> Statistic
 toStatistic (Account_ { _accountName = name
                       , _accountOwner = owner
-                      , _accountDepartment = dept
                       }, Statistic_ { _statisticUnusedServiceUnits = sus
                                     , _statisticExpirationDate = end
                                     }) =
-  Statistic sus end (Account name owner dept)
+  Statistic sus end (Account name owner)
 
 getStatistics ::
      MonadBeam Sqlite m => Text -> m (Either BackendError [Statistic])

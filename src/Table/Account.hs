@@ -16,7 +16,6 @@ data AccountT f =
     { _accountId         :: C f Int
     , _accountName       :: C f Text
     , _accountOwner      :: C f Text
-    , _accountDepartment :: C f Text
     }
   deriving (Generic, Beamable)
 
