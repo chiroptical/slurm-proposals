@@ -1,107 +1,100 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Query.Proposal where
 
+import           Common
 import           Database
 import           Query.Account
 import           Table.Account
 import           Table.Proposal
-import           Type.Backend
+import           Type.Database
 import           Type.Frontend
-import           Common
 
-import           Data.Text                      ( Text )
-import qualified Data.Text                     as T
+import           Data.Text                       (Text)
+import qualified Data.Text                       as T
 import           Database.Beam
 import           Database.Beam.Backend.SQL
-import           Database.Beam.Sqlite.Connection
-                                                ( Sqlite )
+import           Database.Beam.Sqlite.Connection (Sqlite)
 
-import Control.Monad.Trans.Except
+import           Control.Monad.Trans.Class       (lift)
+import           Control.Monad.Trans.Except
 
-selectAllProposals
-  :: Q Sqlite ProposalsDb QBaseScope (ProposalT (QExpr Sqlite QBaseScope))
+selectAllProposals ::
+     Q Sqlite ProposalsDb QBaseScope (ProposalT (QExpr Sqlite QBaseScope))
 selectAllProposals = all_ (_proposalsProposals proposalsDb)
 
 toProposal :: (Account_, Proposal_) -> Proposal
-toProposal (Account_ { _accountName = name, _accountOwner = owner }, Proposal_ { _proposalServiceUnits = sus, _proposalExpirationDate = exp, _proposalNotificationPercent = notif, _proposalLocked = locked })
-  = Proposal sus exp notif locked (Account name owner)
+toProposal (Account_ {_accountName = name, _accountOwner = owner}, Proposal_ { _proposalServiceUnits = sus
+                                                                             , _proposalExpirationDate = exp
+                                                                             , _proposalNotificationPercent = notif
+                                                                             , _proposalLocked = locked
+                                                                             }) =
+  Proposal sus exp notif locked (Account name owner)
 
--- getProposal :: MonadBeam Sqlite m => Text -> m (Either BackendError Proposal)
--- getProposal = (fmap . fmap) toProposal . getProposal_
+selectProposalWhere :: MonadBeam Sqlite m => Account_ -> m (Maybe Proposal_)
+selectProposalWhere account_ =
+  runSelectReturningOne . select $ do
+    proposal <- selectAllProposals
+    guard_ (_proposalAccount proposal ==. val_ (primaryKey account_))
+    pure proposal
 
-getProposal_
-  :: forall m. MonadBeam Sqlite m => Text -> ExceptT BackendError m (Account_, Proposal_)
-getProposal_ name = do
-  account_ <- ExceptT $ accountByName_ name
-  proposal_ <- ExceptT $ fromMaybeE (ProposalDoesntExist name) <$> selectProposalWhere account_
+proposalByName :: MonadBeam Sqlite m => Text -> DatabaseT m Proposal
+proposalByName = fmap toProposal . proposalByName_
+
+proposalByName_ ::
+     MonadBeam Sqlite m => Text -> DatabaseT m (Account_, Proposal_)
+proposalByName_ name = do
+  account_ <- accountByName_ name
+  proposal_ <-
+    ExceptT $
+    fromMaybeE (ProposalDoesntExist name) <$> selectProposalWhere account_
   return (account_, proposal_)
-  where
-    selectProposalWhere :: MonadBeam Sqlite m => Account_ -> m (Maybe Proposal_)
-    selectProposalWhere account_ = runSelectReturningOne . select $ do
-          proposal <- selectAllProposals
-          guard_ (_proposalAccount proposal ==. val_ (primaryKey account_))
-          pure proposal
-  -- mAccount_ <- accountByName_ name
-  -- case mAccount_ of
-  --   Left err -> pure $ Left err
-  --   Right account_ -> do
-  --     proposal_ <-
-  --       runSelectReturningOne $
-  --       select $ do
-  --         proposal <- selectAllProposals
-  --         guard_ (_proposalAccount proposal ==. val_ (primaryKey account_))
-  --         pure proposal
-  --     pure $
-  --       case proposal_ of
-  --         Nothing        -> Left $ ProposalDoesntExist name
-  --         Just proposal_ -> Right (account_, proposal_)
 
--- getProposalById :: MonadBeam Sqlite m => Int -> m (Either BackendError Proposal)
--- getProposalById = (fmap . fmap) toProposal . getProposalById_
+proposalById :: MonadBeam Sqlite m => Int -> ExceptT DatabaseError m Proposal
+proposalById = fmap toProposal . proposalById_
 
--- getProposalById_
---   :: MonadBeam Sqlite m => Int -> m (Either BackendError (Account_, Proposal_))
--- getProposalById_ id = do
---   mProposal_ <- runSelectReturningOne $ select $ do
---     proposal <- selectAllProposals
---     guard_ (_proposalId proposal ==. val_ id)
---     pure proposal
---   case mProposal_ of
---     Nothing        -> pure . Left $ ProposalIdDoesntExist id
---     Just proposal_ -> do
---       mAccount_ <- accountById_ (_proposalId proposal_)
---       case mAccount_ of
---         Left  err      -> pure $ Left err
---         Right account_ -> pure $ Right (account_, proposal_)
+proposalById_ ::
+     MonadBeam Sqlite m => Int -> ExceptT DatabaseError m (Account_, Proposal_)
+proposalById_ id = do
+  account_ <- accountById_ id
+  proposal_ <-
+    ExceptT $
+    fromMaybeE (ProposalIdDoesntExist id) <$> selectProposalWhere account_
+  return (account_, proposal_)
 
--- insertProposal
---   :: MonadBeam Sqlite m
---   => Proposal
---   -> m (Either BackendError (Account_, Proposal_))
--- insertProposal Proposal { proposalServiceUnits = sus, proposalExpirationDate = exp, proposalNotificationPercent = notif, proposalLocked = locked, proposalAccount = Account { accountName = name } }
---   = do
---     mAccount_ <- accountByName_ name
---     case mAccount_ of
---       Left  err      -> pure . Left $ err
---       Right account_ -> do
---         eProposal_ <- getProposal_ name
---         case eProposal_ of
---           Right _ -> pure . Left $ ProposalAlreadyExist name
---           Left (ProposalDoesntExist _) -> do
---             runInsert
---               $ insert (_proposalsProposals proposalsDb)
---               $ insertExpressions
---                   [ Proposal_ default_
---                               (val_ sus)
---                               (val_ exp)
---                               (val_ notif)
---                               (val_ locked)
---                               (val_ $ primaryKey account_)
---                   ]
---             getProposal_ name
---           -- This shouldn't happen...
---           Left err -> pure . Left $ err
+exists :: MonadBeam Sqlite m => Text -> DatabaseT m (Account_, Proposal_)
+exists name = do
+  proposalByName_ name
+  throwE $ ProposalAlreadyExists name
+
+-- TODO: entityId should be passed to proposalBy... functions
+insertProposal ::
+     MonadBeam Sqlite m
+  => PrimaryKey AccountT Identity
+  -> Proposal
+  -> ExceptT DatabaseError m (Account_, Proposal_)
+insertProposal entityId Proposal { proposalServiceUnits = sus
+                                 , proposalExpirationDate = exp
+                                 , proposalNotificationPercent = notif
+                                 , proposalLocked = locked
+                                 , proposalAccount = Account {accountName = name}
+                                 } =
+  exists name `catchE` \case
+    ProposalDoesntExist _ -> do
+      runInsert $
+        insert (_proposalsProposals proposalsDb) $
+        insertExpressions
+          [ Proposal_
+              default_
+              (val_ sus)
+              (val_ exp)
+              (val_ notif)
+              (val_ locked)
+              (val_ entityId)
+          ]
+      proposalByName_ name
+    err@(ProposalAlreadyExists _) -> throwE err

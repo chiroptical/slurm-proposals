@@ -1,10 +1,10 @@
 module Config where
 
-import           Database.SQLite.Simple         ( Connection )
-import           CLI                            ( Options )
+import           CLI                    (Options)
+import           Database.SQLite.Simple (Connection)
 
 data Config =
   Config
     { databaseConnection :: Connection
-    , cliOptions :: Options
+    , cliOptions         :: Options
     }

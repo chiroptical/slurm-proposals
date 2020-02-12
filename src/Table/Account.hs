@@ -13,9 +13,9 @@ deriving instance Show (PrimaryKey AccountT Identity)
 
 data AccountT f =
   Account_
-    { _accountId         :: C f Int
-    , _accountName       :: C f Text
-    , _accountOwner      :: C f Text
+    { _accountId    :: C f Int
+    , _accountName  :: C f Text
+    , _accountOwner :: C f Text
     }
   deriving (Generic, Beamable)
 

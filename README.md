@@ -3,8 +3,11 @@
 TODO
 ---
 
-Need to figure out a monad transformer stack to operate in and update database
-and CLI functions to operate in it.
+1. Remove `type DatabaseT = EitherT DatabaseError` and convert Database code to
+   `MaybeT`
+2. `makeTables` should be `makeTablesIfNotExists`
+3. Potentially reduce the number of queries by passing account primary key to
+   subsequent queries
 
 # slurm-proposals
 

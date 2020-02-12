@@ -1,11 +1,14 @@
-module Type.Backend where
+module Type.Database where
 
-import           Data.Text (Text)
+import           Control.Monad.Trans.Except (ExceptT)
+import           Data.Text                  (Text)
 
-data BackendError
+type DatabaseT = ExceptT DatabaseError
+
+data DatabaseError
   = AccountDoesntExist Text
   | AccountIdDoesntExist Int
-  | ProposalAlreadyExist Text
+  | ProposalAlreadyExists Text
   | ProposalDoesntExist Text
   | ProposalIdDoesntExist Int
   | PurchasedUnitIdDoesntExist Int

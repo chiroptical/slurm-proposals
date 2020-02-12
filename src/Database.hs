@@ -29,10 +29,7 @@ proposalsDb =
         setEntityName "accounts" <>
         modifyTableFields
           tableModification
-            { _accountId = "id"
-            , _accountName = "name"
-            , _accountOwner = "owner"
-            }
+            {_accountId = "id", _accountName = "name", _accountOwner = "owner"}
     , _proposalsProposals =
         setEntityName "proposals" <>
         modifyTableFields

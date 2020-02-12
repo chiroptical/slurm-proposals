@@ -50,26 +50,26 @@ data Options =
     }
   deriving (Show)
 
-account :: Parser Text
-account =
-  strOption $
-  long "account" <> short 'a' <> metavar "STRING" <>
-  help "The account owner's group name for the proposal"
-
-owner :: Parser Text
-owner =
-  strOption $
-  long "owner" <> short 'o' <> metavar "STRING" <>
-  help "The account owner's user id for the proposal"
-
 optionsParser :: Parser Options
-optionsParser = Options <$> account <*> owner <*> serviceUnits <*> subcommandParser
+optionsParser =
+  Options <$> account <*> owner <*> serviceUnits <*> subcommandParser
   where
+    serviceUnits :: Parser Int
     serviceUnits =
       option auto $
       long "serviceUnits" <> short 's' <> metavar "NUMBER" <> value 10000 <>
       showDefault <>
       help "The number of service units to insert"
+    account :: Parser Text
+    account =
+      strOption $
+      long "account" <> short 'a' <> metavar "STRING" <>
+      help "The account owner's group name for the proposal"
+    owner :: Parser Text
+    owner =
+      strOption $
+      long "owner" <> short 'o' <> metavar "STRING" <>
+      help "The account owner's user id for the proposal"
 
 opts :: ParserInfo Options
 opts = info (optionsParser <**> helper) (fullDesc <> header "" <> progDesc "")

@@ -7,8 +7,8 @@ import           Data.Text           (Text)
 
 data Account =
   Account
-    { accountName       :: Text
-    , accountOwner      :: Text
+    { accountName  :: Text
+    , accountOwner :: Text
     }
   deriving (Eq, Show)
 
