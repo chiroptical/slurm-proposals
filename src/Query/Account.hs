@@ -56,8 +56,9 @@ accountById_ id =
   fromMaybeE (AccountIdDoesntExist id) <$>
   runSelectReturningOne (selectAccountsWhere _accountId id)
 
-insertAccount :: MonadBeam Sqlite m => Account -> DatabaseT m Account_
-insertAccount Account {accountName = name, accountOwner = owner} =
+insertAccountIfNotExists ::
+     MonadBeam Sqlite m => Account -> DatabaseT m Account_
+insertAccountIfNotExists Account {accountName = name, accountOwner = owner} =
   accountByName_ name `catchE` \case
     AccountDoesntExist _ -> do
       runInsert $

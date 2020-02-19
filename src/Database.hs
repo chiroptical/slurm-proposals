@@ -62,18 +62,17 @@ proposalsDb =
             }
     }
 
-makeTables :: Connection -> IO ()
-makeTables conn =
-  withTransaction conn $ do
-    execute_
-      conn
-      "CREATE TABLE IF NOT EXISTS accounts \
+makeTablesIfNotExists :: Connection -> IO ()
+makeTablesIfNotExists conn = do
+  execute_
+    conn
+    "CREATE TABLE IF NOT EXISTS accounts \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, name VARCHAR NOT NULL UNIQUE \
       \, owner VARCHAR NOT NULL)"
-    execute_
-      conn
-      "CREATE TABLE IF NOT EXISTS proposals \
+  execute_
+    conn
+    "CREATE TABLE IF NOT EXISTS proposals \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, service_units INT NOT NULL \
       \, expiration_date DATE NOT NULL \
@@ -81,18 +80,18 @@ makeTables conn =
       \, locked BOOL NOT NULL \
       \, account__id INT NOT NULL UNIQUE \
       \)"
-    execute_
-      conn
-      "CREATE TABLE IF NOT EXISTS purchased_units \
+  execute_
+    conn
+    "CREATE TABLE IF NOT EXISTS purchased_units \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, service_units INT NOT NULL \
       \, expiration_date DATE NOT NULL \
       \, consumed BOOL NOT NULL \
       \, account__id INT NOT NULL \
       \)"
-    execute_
-      conn
-      "CREATE TABLE IF NOT EXISTS statistics \
+  execute_
+    conn
+    "CREATE TABLE IF NOT EXISTS statistics \
       \( id INTEGER PRIMARY KEY AUTOINCREMENT \
       \, unused_service_units INT NOT NULL \
       \, expiration_date DATE NOT NULL \

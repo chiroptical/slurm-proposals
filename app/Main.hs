@@ -1,16 +1,15 @@
 module Main where
 
-import           CLI                        (Options (..), Subcommand (..),
-                                             opts)
+import           CLI                        (Options (..), opts)
 import           Options.Applicative        (execParser)
 
-import           Database                   (makeTables)
+import           Database                   (makeTablesIfNotExists)
 import           Database.SQLite.Simple     (open)
 
 import           Config                     (Config (..))
 
-import           Query.Account              (insertAccount)
-import           Query.Proposal             (insertProposal)
+import           Query.Account              (insertAccountIfNotExists, accountByName_)
+import           Query.Proposal             (insertProposal, proposalByName_)
 import           Table.Proposal             (NotificationPercent (Zero))
 import           Type.Frontend              (Account (..), Proposal (..))
 
@@ -20,6 +19,7 @@ import           Control.Monad.Trans.Reader
 import           Data.Time.Calendar         (addDays)
 import           Data.Time.LocalTime        (LocalTime, ZonedTime (..),
                                              getZonedTime, localDay)
+import           Data.Maybe                     ( fromMaybe )
 import           Database.Beam.Schema       (primaryKey)
 import           Database.Beam.Sqlite       (runBeamSqliteDebug)
 
@@ -36,30 +36,37 @@ getExpirationDate = do
 dispatch :: SlurmProp ()
 dispatch = do
   Config {databaseConnection = conn, cliOptions = opts} <- ask
-  case optionsSubcommand opts of
-    Insert -> do
-      let account = Account (optionsAccount opts) (optionsOwner opts)
+  case opts of
+    Insert name owner units -> do
+      let account = Account name owner
       expirationLocalTime <- liftIO getExpirationDate
       result <-
         liftIO . runBeamSqliteDebug print conn . runExceptT $ do
           account_ <-
-            insertAccount $ Account (optionsAccount opts) (optionsOwner opts)
-          insertProposal (primaryKey account_) $
+            insertAccountIfNotExists account
+          insertProposal account_ $
             Proposal
-              (optionsServiceUnits opts)
+              units
               expirationLocalTime
               Zero
               False
               account
-      case result of
-        Left msg -> liftIO . print $ msg
-        Right _  -> pure ()
-      pure ()
+      liftIO $ case result of
+        Left msg -> print msg
+        Right prop -> print prop
+    Get name -> do
+      result <-
+        liftIO . runBeamSqliteDebug print conn . runExceptT $ do
+          account_ <- accountByName_ name
+          proposalByName_ account_
+      liftIO $ case result of
+        Left msg -> print msg
+        Right prop -> print prop
 
+-- TODO: Database operations should happen inside of a transaction
 main :: IO ()
 main = do
   cli <- execParser opts
   conn <- open "proposals.db"
-  -- TODO: This should be makeTablesIfNotExists
-  makeTables conn
+  makeTablesIfNotExists conn
   runReaderT dispatch (Config conn cli)

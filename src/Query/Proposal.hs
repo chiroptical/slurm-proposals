@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -42,49 +41,41 @@ selectProposalWhere account_ =
     guard_ (_proposalAccount proposal ==. val_ (primaryKey account_))
     pure proposal
 
-proposalByName :: MonadBeam Sqlite m => Text -> DatabaseT m Proposal
+proposalByName :: MonadBeam Sqlite m => Account_ -> DatabaseT m Proposal
 proposalByName = fmap toProposal . proposalByName_
 
 proposalByName_ ::
-     MonadBeam Sqlite m => Text -> DatabaseT m (Account_, Proposal_)
-proposalByName_ name = do
-  account_ <- accountByName_ name
+     MonadBeam Sqlite m => Account_ -> DatabaseT m (Account_, Proposal_)
+proposalByName_ acct_ = do
   proposal_ <-
     ExceptT $
-    fromMaybeE (ProposalDoesntExist name) <$> selectProposalWhere account_
-  return (account_, proposal_)
+    fromMaybeE (ProposalDoesntExist $ _accountName acct_) <$> selectProposalWhere acct_
+  return (acct_, proposal_)
 
-proposalById :: MonadBeam Sqlite m => Int -> ExceptT DatabaseError m Proposal
+proposalById :: MonadBeam Sqlite m => Account_ -> ExceptT DatabaseError m Proposal
 proposalById = fmap toProposal . proposalById_
 
 proposalById_ ::
-     MonadBeam Sqlite m => Int -> ExceptT DatabaseError m (Account_, Proposal_)
-proposalById_ id = do
-  account_ <- accountById_ id
+     MonadBeam Sqlite m => Account_ -> ExceptT DatabaseError m (Account_, Proposal_)
+proposalById_ acct_ = do
   proposal_ <-
     ExceptT $
-    fromMaybeE (ProposalIdDoesntExist id) <$> selectProposalWhere account_
-  return (account_, proposal_)
+    fromMaybeE (ProposalIdDoesntExist (_accountId acct_)) <$> selectProposalWhere acct_
+  return (acct_, proposal_)
 
-exists :: MonadBeam Sqlite m => Text -> DatabaseT m (Account_, Proposal_)
-exists name = do
-  proposalByName_ name
-  throwE $ ProposalAlreadyExists name
-
--- TODO: entityId should be passed to proposalBy... functions
 insertProposal ::
      MonadBeam Sqlite m
-  => PrimaryKey AccountT Identity
+  => Account_
   -> Proposal
   -> ExceptT DatabaseError m (Account_, Proposal_)
-insertProposal entityId Proposal { proposalServiceUnits = sus
-                                 , proposalExpirationDate = exp
-                                 , proposalNotificationPercent = notif
-                                 , proposalLocked = locked
-                                 , proposalAccount = Account {accountName = name}
-                                 } =
-  exists name `catchE` \case
-    ProposalDoesntExist _ -> do
+insertProposal acct_ Proposal { proposalServiceUnits = sus
+                             , proposalExpirationDate = exp
+                             , proposalNotificationPercent = notif
+                             , proposalLocked = locked
+                               } = do
+  proposal_ <- selectProposalWhere acct_
+  case proposal_ of
+    Nothing -> do
       runInsert $
         insert (_proposalsProposals proposalsDb) $
         insertExpressions
@@ -94,7 +85,7 @@ insertProposal entityId Proposal { proposalServiceUnits = sus
               (val_ exp)
               (val_ notif)
               (val_ locked)
-              (val_ entityId)
+              (val_ $ primaryKey acct_)
           ]
-      proposalByName_ name
-    err@(ProposalAlreadyExists _) -> throwE err
+      proposalByName_ acct_
+    Just proposal -> throwE . ProposalAlreadyExists $ toProposal (acct_, proposal)
